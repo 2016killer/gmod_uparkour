@@ -2,46 +2,6 @@
 	作者:白狼
 	2025 11 5
 	Trigger: Check -> Start -> StartEffect-> Play -> Clear -> ClearEffect
-
-	常用函数:
-		UPar.EnableInterrupt
-			用于开启动作中断支持
-
-		UPar.AddInterruptsFunc
-			用于添加动作中断函数
-
-	支持事件:
-		hook.Run('UParStart', ply, action, checkResult)
-			在动作开始时调用
-
-		hook.Run('UParInterrupt', ply, playing, playingData, action, checkResult)
-			在动作被打断时调用
-			
-		hook.Run('UParEnd', ply, playing, endResult)
-			在动作结束时调用
---]]
-
---[[
-	Author: 白狼
-	2025-11-05
-	Trigger: Check -> Start -> StartEffect-> Play -> Clear -> ClearEffect
-
-	Commonly used functions:
-		UPar.EnableInterrupt
-			Used to enable support for action interruption.
-		
-		UPar.AddInterruptsFunc
-			Used to add an interrupt function for an action.
-
-	Supported events:
-		hook.Run('UParStart', ply, action, checkResult)
-			Called when an action starts.
-
-		hook.Run('UParInterrupt', ply, playing, playingData, action, checkResult)
-			Called when an action is interrupted.
-			
-		hook.Run('UParEnd', ply, playing, endResult)
-			Called when an action ends.
 --]]
 
 UPar.TRIGGERNW_FLAG_START = 'START'

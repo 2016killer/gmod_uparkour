@@ -1,31 +1,6 @@
 --[[
 	作者:白狼
 	2025 11 1
-
-	常用函数:
-		UPar.RegisterEffect 
-			不推荐使用, 因为它不支持覆盖, 这对开发不利, 除非将代码写的很难看
-			通常我们在开发默认特效时会使用它
-			详细例子见 effects/dp_highclimb_effect.lua
-		UPar.RegisterEffectEasy 
-			是推荐使用的, 因为它支持覆盖
-			但是它的行为是和自定义特效类似的, 只改变可序列化的数据
-			通常在effectseasy中使用, 详细例子见 effectseasy/dp_easy.lua
---]]
-
---[[
-	Author: 白狼
-	2025-11-01
-
-	Commonly used functions:
-		UPar.RegisterEffect 
-			Not recommended for use, as it does not support overriding – this is detrimental to development, unless the code is written in a cumbersome/messy way.
-			We typically use it when developing default effects.
-			For detailed examples, see effects/dp_highclimb_effect.lua
-		UPar.RegisterEffectEasy 
-			Recommended for use, as it supports overriding.
-			However, its behavior is similar to that of custom effects, only modifying serializable data.
-			It is typically used in the effectseasy directory; for detailed examples, see effectseasy/dp_easy.lua
 --]]
 
 local UPar = UPar

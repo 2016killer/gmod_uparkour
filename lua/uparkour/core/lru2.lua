@@ -1,13 +1,8 @@
 --[[
 	作者:豆包女士
 	2025 12 10
-    代码与LRU完全相同, 仅名字不同
 ]]--
---[[
-	Author: Ms. DouBao
-	2025 12 10
-    The code is exactly the same as LRU, with only the name being different
-]]--
+
 
 
 local LRU2Cache = {}

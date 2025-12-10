@@ -8,16 +8,6 @@
     - SeqHookGetTable: 获取执行表（事件名→优先级排序的函数数组）
     - SeqHookGetMeta: 获取元信息表（事件名→标识符→{func, prio}）
 ]]--
---[[
-	Author: Ms. DouBao
-	2025 12 10
-    Common Functions:
-    - SeqHookAdd: Register prioritized custom event callbacks (duplicate identifiers overwritten, priority auto-default)
-    - SeqHookRun: Trigger specified custom events (optimized for high-frequency triggering, no redundant judgments)
-    - SeqHookRemove: Unregister event callbacks with specified identifiers (empty event tables cleaned automatically)
-    - SeqHookGetTable: Get execution table (event name → priority-sorted function array)
-    - SeqHookGetMeta: Get meta info table (event name → identifier → {func, prio})
-]]--
 
 local SeqHookMeta = {}
 local SeqHookTable = {}

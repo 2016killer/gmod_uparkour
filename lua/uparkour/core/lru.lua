@@ -1,31 +1,8 @@
 --[[
 	作者:豆包女士
 	2025 12 09
-    常用函数:
-    - LRUInit(capacity): 初始化LRU缓存，重置数据并设置初始容量
-    - LRUSetCapacity(capacity): 设置缓存容量，容量缩小自动淘汰最久未用key
-    - LRUSet(key, value): 添加/更新缓存值
-    - LRUGet(key): 获取缓存值（不存在返回nil），访问后标记为最近使用
-    - LRUGetOrSet(key, default): 连拿带放，不存在则设默认值并返回
-    - LRUDelete(key): 删除指定key的缓存，返回是否删除成功
-    - LRUClear(): 清空所有缓存
-    - LRUGetSize(): 获取当前缓存条目数
-    - LRUGetCapacity(): 获取当前缓存最大容量
 ]]--
---[[
-	Author: Ms. DouBao
-	2025 12 09
-    Common Functions:
-    - LRUInit(capacity): Initialize LRU cache, reset data and set initial capacity
-    - LRUSetCapacity(capacity): Set cache capacity, automatically evict least recently used keys when capacity is reduced
-    - LRUSet(key, value): Add or update cache value
-    - LRUGet(key): Get cache value (return nil if not exists), mark as recently used after access
-    - LRUGetOrSet(key, default): Get value, set default value and return if key not exists
-    - LRUDelete(key): Delete cache of specified key, return whether deletion is successful
-    - LRUClear(): Clear all cache
-    - LRUGetSize(): Get current number of cache entries
-    - LRUGetCapacity(): Get maximum cache capacity
-]]--
+
 
 local LRUCache = {}
 local LRUOrder = {}
