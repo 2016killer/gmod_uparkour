@@ -30,13 +30,13 @@ hook.Add('KeyPress', 'compat.2.1.0.effect_config', function(ply, key)
 		print('检测到 effect_config.json 2.1.0 文件')
 		
 		for _, actionName in ipairs(targetActions) do
-			local effectName = data[actionName]
+			local effectName = effectConfig[actionName]
 
-			if not data[actionName] or not mapping[effectName] then
+			if not effectConfig[actionName] or not mapping[effectName] then
 				continue
 			end
 
-			data[actionName] = mapping[effectName]
+			effectConfig[actionName] = mapping[effectName]
 		end
 
 	end
@@ -45,7 +45,7 @@ hook.Add('KeyPress', 'compat.2.1.0.effect_config', function(ply, key)
 		print('检测到 effects_custom.json 2.1.0 文件')
 	
 		for _, actionName in ipairs(targetActions) do
-			local customEffect = data[actionName]
+			local customEffect = customEffects[actionName]
 
 			if not istable(customEffect) or not mapping[customEffect.linkName] then
 				continue

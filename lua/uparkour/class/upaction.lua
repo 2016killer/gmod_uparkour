@@ -97,6 +97,25 @@ function UPAction:Register()
     hook.Run('UParRegisterAction', name, self)
 end
 
+function UPAction:GetEffect(effectName)
+    return self.Effects[effectName] or self.Effects.default
+end
+
+function UPAction:GetPlayEffect(ply)
+    
+    return self.Effects[effectName] or self.Effects.default
+end
+
 
 UPar.GetAllActions = function() return Instances end
 UPar.isupaction = isupaction
+
+
+-- ===================== 测试 ===================== 
+local action = UPAction:new('test', {
+    Effects = {
+        default = 'SP-VManip-白狼',
+    },
+})
+
+PrintTable(action)

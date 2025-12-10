@@ -36,8 +36,8 @@ function UPEffect:new(name, initData)
     local self = setmetatable({}, UPEffect)
 
 	self.Name = name
-	self.Play = self.Play or function(self, ply, ...)
-		UPar.printdata(string.format('Effect "%s" Play', effectName), ply, ...)
+	self.Start = self.Start or function(self, ply, ...)
+		UPar.printdata(string.format('Effect "%s" Start', effectName), ply, ...)
 	end
 
 	self.Clear = self.Clear or function(self, ply, ...)
