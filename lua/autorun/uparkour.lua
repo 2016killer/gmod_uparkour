@@ -20,6 +20,8 @@ UPar = UPar or {}
 UPar.Version = '3 beta'
 
 UPar.emptyfunc = function() end
+UPar.truefunc = function() return true end
+UPar.anypass = setmetatable({}, {__index = UPar.truefunc})
 
 UPar.SnakeTranslate = function(key, prefix, sep, joint)
 	-- 在树编辑器中所有的键名使用此翻译, 分隔符采用 '_'
@@ -40,10 +42,11 @@ end
 
 UPar.printdata = function(flag, ...)
     local total = select('#', ...)
+	local temp = {...}
 	print('[UPar]: ---------------' .. flag .. '---------------')
 	print('total:', total)
     for i = 1, total do
-        local data = select(i, ...)
+        local data = temp[i]
         if istable(data) then
 			print('arg'..tostring(i)..':', data)
 			PrintTable(data)
@@ -140,13 +143,30 @@ if CLIENT then
 	end
 end
 
-UPar.LoadLuaFiles('class')
+UPar.PackResult = function(...)
+    local first = ...
+    if not first then 
+		return nil 
+	end
+
+    local dataSize = select('#', ...)
+	local result = {...}
+    for i = 1, dataSize do
+        if result[i] == nil then
+            result[i] = ''
+        end
+    end
+
+    return result, dataSize
+end
+
 UPar.LoadLuaFiles('core')
-UPar.LoadLuaFiles('actions')
-UPar.LoadLuaFiles('effects')
-UPar.LoadLuaFiles('effectseasy')
-UPar.LoadLuaFiles('expansion')
-UPar.LoadLuaFiles('gui')
+UPar.LoadLuaFiles('class')
+// UPar.LoadLuaFiles('actions')
+// UPar.LoadLuaFiles('effects')
+// UPar.LoadLuaFiles('effectseasy')
+// UPar.LoadLuaFiles('expansion')
+// UPar.LoadLuaFiles('gui')
 
 concommand.Add('up_debug_' .. (SERVER and 'sv' or 'cl'), function()
 	PrintTable(UPar)

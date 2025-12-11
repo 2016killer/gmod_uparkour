@@ -1,6 +1,6 @@
 --[[
 	作者:白狼
-	2025 11 1
+	2025 12 11
 --]]
 
 
@@ -77,196 +77,42 @@ function UPEffect:Register(actionName)
     hook.Run('UParRegisterEffect', actionName, name, self)
 end
 
-function UPEffect:RegisterEasy(actionName)
-	-- 注册动作特效, 返回特效和是否已存在
-	-- 支持覆盖
-	local action = UPar.GetAction(actionName)
-	if not action then
-		ErrorNoHalt(string.format('[UPar]: Action "%s" not found', actionName))
-		return
-	end
-
-	local default = UPar.GetEffect(action, 'default')
-	if not default then
-		ErrorNoHalt(string.format('[UPar]: Action "%s" has no default effect', actionName))
-		return
-	end
-
-	action.Effects[effectName] = table.Merge(table.Copy(default), effect)
-	action.Effects[effectName].Name = effectName
-	return action.Effects[effectName]
+function UPEffect:IsCustom()
+	return !!self.linkName
 end
 
-
-UPar.EffectTest = function(ply, actionName, effectName)
-	local action = UPar.GetAction(actionName)
-	if not action then
-		print(string.format('[UPar]: effect test failed, action "%s" not found', actionName))
-		return
-	end
-
-	local effect = UPar.GetPlayerEffect(ply, action, effectName)
-	-- 特效不存在
-	if not effect then
-		print(string.format('[UPar]: effect test failed, action "%s" effect "%s" not found', actionName, effectName))
-		return
-	end
-
-	effect:start(ply)
-	timer.Simple(1, function()
-		effect:clear(ply)
-	end)
-	if CLIENT then
-		net.Start('UParEffectTest')
-			net.WriteString(actionName)
-			net.WriteString(effectName)
-		net.SendToServer()
-	end
+function UPEffect:CreateCustom(name)
+	return {
+		Name = name,
+		linkName = self.Name,
+		icon = 'icon64/tool.png'
+	}
 end
 
-UPar.isupeffect = isupeffect
-
-UPar.GetPlayerCurrentEffect = function(ply, action)
-	-- 获取指定玩家动作的当前特效
-	return UPar.GetPlayerEffect(ply, action, ply.upar_effect_config[action.Name] or 'default')
-end
-
-UPar.GetPlayerEffect = function(ply, action, effectName)
-	if effectName == 'Custom' then
-		return ply.upar_effects_custom[action.Name]
-	else
-		return action.Effects[effectName]
-	end
-end
-
-
-UPar.InitCustomEffect = function(actionName, custom)
-	custom.Name = 'Custom'
-	local linkName = custom.linkName
-	if not isstring(linkName) then
-		print(string.format('[UPar]: register custom effect failed, action "%s" linkName "%s" is not string', actionName, linkName))
-		return false
+function UPEffect:InitCustom(actionName, name)
+	if not self.linkName then 
+		return true
 	end
 
 	local action = UPar.GetAction(actionName)
 	if not action then
-		print(string.format('[UPar]: register custom effect failed, action "%s" not found', actionName))
+		print(string.format('[UPar]: init custom effect failed, action "%s" not found', actionName))
 		return false
 	end
 
-	local linkEffect = UPar.GetEffect(action, linkName)
-	if not linkEffect then
-		print(string.format('[UPar]: register custom effect failed, action "%s" effect "%s" not found', actionName, linkName))
+	local target = action:GetEffect(self.linkName)
+	if not target then
+		print(string.format('[UPar]: init custom effect failed, action "%s" effect "%s" not found', actionName, linkName))
 		return false
 	end
 
-	for k, v in pairs(linkEffect) do
+	for k, v in pairs(target) do
 		if custom[k] == nil then custom[k] = v end
 	end
 
 	return true
 end
 
-UPar.CreateCustomEffect = function(actionName, linkName)
-	local action = UPar.GetAction(actionName)
-	if not action then
-		print(string.format('[UPar]: copy action "%s" link "%s" to custom failed, action not found', actionName, linkName))
-		return nil
-	end
-
-	local linkEffect = UPar.GetEffect(action, linkName)
-	if not linkEffect then
-		print(string.format('[UPar]: copy action "%s" link "%s" to custom failed, link not found', actionName, linkName))
-		return nil
-	end
-
-	local custom = {
-		Name = 'Custom',
-		linkName = linkName,
-		icon = 'icon64/tool.png',
-	}
-
-	return custom
-end
-
-
-if SERVER then
-	util.AddNetworkString('UParEffectCustom')
-	util.AddNetworkString('UParEffectConfig')
-	util.AddNetworkString('UParEffectTest')
-
-	net.Receive('UParEffectTest', function(len, ply)
-		local actionName = net.ReadString()
-		local effectName = net.ReadString()
-		
-		UPar.EffectTest(ply, actionName, effectName)
-	end)
-
-	net.Receive('UParEffectConfig', function(len, ply)
-		local content = net.ReadString()
-		// content = util.Decompress(content)
-
-		local effectConfig = util.JSONToTable(content or '')
-		if not istable(effectConfig) then
-			print('[UPar]: receive effect config is not table')
-			return
-		end
-
-		table.Merge(ply.upar_effect_config, effectConfig)
-	end)
-
-	net.Receive('UParEffectCustom', function(len, ply)
-		local content = net.ReadString()
-		// content = util.Decompress(content)
-
-		local customEffects = util.JSONToTable(content or '')
-		if not istable(customEffects) then
-			print('[UPar]: receive custom effects is not table')
-			return
-		end
-
-		-- 初始化自定义特效
-		for k, v in pairs(customEffects) do
-			UPar.InitCustomEffect(k, v)
-		end
-
-		table.Merge(ply.upar_effects_custom, customEffects)
-	end)
-
-
-	hook.Add('PlayerInitialSpawn', 'upar.init.effect', function(ply)
-		ply.upar_effect_config = ply.upar_effect_config or {}
-		ply.upar_effects_custom = ply.upar_effects_custom or {}
-	end)
-
-elseif CLIENT then
-	UPar.SendCustomEffectsToServer = function(effects)
-		-- 为了过滤掉一些不能序列化的数据
-		local content = util.TableToJSON(effects)
-		if not content then
-			print('[UPar]: send custom effects to server failed, content is not valid json')
-			return
-		end
-		// content = util.Compress(content)
-
-		net.Start('UParEffectCustom')
-			net.WriteString(content)
-		net.SendToServer()
-	end
-
-	UPar.SendEffectConfigToServer = function(effectConfig)
-		local content = util.TableToJSON(effectConfig)
-		if not content then
-			print('[UPar]: send effect config to server failed, content is not valid json')
-			return
-		end
-		// content = util.Compress(content)
-
-		net.Start('UParEffectConfig')
-			net.WriteString(content)
-		net.SendToServer()
-	end
-end
-
+UPar.isupeffect = isupeffect
 
 
