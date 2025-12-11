@@ -1,92 +1,149 @@
 --[[
 	作者:白狼
 	2025 11 5
-	Trigger: Check -> Start -> StartEffect-> Play -> Clear -> ClearEffect
+
+	为了解决nil导致的打包问题, 所有nil都被替换为空字符串
+	-- NWBatch 较为脆弱, 需要精确传入数据大小
 --]]
 
-UPar.TRIGGERNW_FLAG_START = 'START'
-UPar.TRIGGERNW_FLAG_END = 'END'
-UPar.TRIGGERNW_FLAG_INTERRUPT = 'INTERRUPT'
 
-local TRIGGERNW_FLAG_START = UPar.TRIGGERNW_FLAG_START
-local TRIGGERNW_FLAG_END = UPar.TRIGGERNW_FLAG_END
-local TRIGGERNW_FLAG_INTERRUPT = UPar.TRIGGERNW_FLAG_INTERRUPT
+local UPNW_FLAG_START = 'START'
+local UPNW_FLAG_END = 'END'
+local UPNW_FLAG_INTERRUPT = 'INTERRUPT'
+local UPNW_FLAG_RHYTHM_CHANGE = 'RHYTHM_CHANGE'
 
-local function HandleResult(...)
-	if select(1, ...) then
-		return table.Pack(...)
-	else
-		return nil
+local function ParseNWBatch(batch)
+	local result = {}
+	local batchSize = #batch
+	local fPoint = 1
+	while fPoint <= batchSize do
+		local flag = batch[fPoint]
+		local actionName = batch[fPoint + 1]
+		local dataSize = batch[fPoint + 2]
+		dataSize = math.max(isnumber(dataSize) and dataSize or 1, 1)
+
+		table.insert(result, {
+			flag = flag,
+			actionName = actionName,
+			dataSize = dataSize,
+			data = {unpack(batch, fPoint + 3, fPoint + 2 + dataSize)},
+		})
+
+		fPoint = fPoint + 3 + dataSize
 	end
+
+	return result
 end
 
+UPar.ParseNWBatch = ParseNWBatch
 
-local function StartTriggerNet(ply)
-	ply.upar_tnet = ply.upar_tnet or {}
-end
+if SERVER then
+	-- NWBatch 较为脆弱, 需要精确传入数据大小
+	util.AddNetworkString('UParNWEventBatch')
 
-local function WriteStart(ply, actionName, data)
-	local target = ply.upar_tnet
-	table.Add(target, {TRIGGERNW_FLAG_START, actionName, #data})
-	table.Add(target, data)
-end
+	UPar.NWBatchInit = function(ply, channelId)
+		if not IsValid(ply) or not ply:IsPlayer() then
+			error('Invalid ply\n') 
+		end
 
-local function WriteEnd(ply, actionName, data)
-	local target = ply.upar_tnet
-	table.Add(target, {TRIGGERNW_FLAG_END, actionName, #data})
-	table.Add(target, data)
-end
+		local netkey = 'upnwbatch_' .. (channelId or '')
+		local target = ply[netkey]
 
-local function WriteInterrupt(ply, actionName, data, breakerName)
-	local target = ply.upar_tnet
-	table.Add(target, {TRIGGERNW_FLAG_INTERRUPT, actionName, #data + 1, breakerName})
-	table.Add(target, data)
-end
+		if istable(target) then 
+			print('[UPar]: Warning: NWBatchInit already initialized\n')
+		end
 
-local function WriteMoveControl(ply, enable, ClearMovement, RemoveKeys, AddKeys)
-	local target = ply.upar_tnet
-	table.Add(target, {TRIGGERNW_FLAG_MOVE_CONTROL,
-		'', 4, enable, ClearMovement, RemoveKeys, AddKeys
-	})
-end
-
-local function SendTriggerNet(ply)
-	if not ply.upar_tnet then 
-		error('Failure to use StartTriggerNet or a transmission conflict has occurred\n')
-		return 
+		ply[netkey] = {}
 	end
-	net.Start('UParEvents')
-		net.WriteTable(ply.upar_tnet, true)
-	net.Send(ply)
-	ply.upar_tnet = nil
+
+	UPar.NWWriteBatch = function(ply, channelId, flag, actionName, data, dataSize)
+		if not IsValid(ply) or not ply:IsPlayer() then
+			error('Invalid ply\n') 
+		end
+
+		local netkey = 'upnwbatch_' .. (channelId or '')
+		local target = ply[netkey]
+
+		table.Add(target, {flag, actionName, dataSize})
+		table.Add(target, data)
+	end
+
+	UPar.NWSendBatch = function(ply, channelId)
+		if not IsValid(ply) or not ply:IsPlayer() then
+			error('Invalid ply\n') 
+		end
+
+		local netkey = 'upnwbatch_' .. (channelId or '')
+		local target = ply[netkey]
+
+		if not istable(target) then 
+			error('Failure to use NWBatchInit or a transmission conflict has occurred\n') 
+		end
+
+		net.Start('UParNWEventBatch')
+			net.WriteTable(target, true)
+		net.Send(ply)
+		ply[netkey] = nil
+	end
+elseif CLIENT then
+	net.Receive('UParNWEventBatch', function(len, ply)
+		local data = net.ReadTable(true)
+		local result = ThreadNWParseBatch(data)
+
+		local action = UPar.GetAction(actionName)
+		if not action then 
+			return 
+		end
+		for _, v in ipairs(result) do
+			local flag = v.flag
+			local actionName = v.actionName
+			local dataSize = v.dataSize
+			local data = v.data
+
+			if flag == UPNW_FLAG_START then
+				action:Start(ply, unpack(result))
+			elseif flag == UPNW_FLAG_END then
+				action:Clear(ply, nil, nil, unpack(result, 2))
+			elseif flag == UPNW_FLAG_INTERRUPT then
+				// action:Interrupt(ply, unpack(result, 2))
+			elseif flag == UPNW_FLAG_RHYTHM_CHANGE then
+				// action:RhythmChange(ply, unpack(result, 2))
+			end
+		end
+	end)
 end
 
 if SERVER then
-	UPar.StartTriggerNet = StartTriggerNet
-	UPar.WriteStart = WriteStart
-	UPar.WriteEnd = WriteEnd
-	UPar.WriteInterrupt = WriteInterrupt
-	UPar.WriteMoveControl = WriteMoveControl
-else
-	StartTriggerNet = nil
-	WriteStart = nil
-	WriteEnd = nil
-	WriteInterrupt = nil
-	WriteMoveControl = nil
+	function a1() return 1 end
+	function a2() return 1, nil end
+	function a3() return 1, nil, nil end
+
+	local a1, a1size = PackResult(a1())
+	local a2, a2size = PackResult(a2())
+	local a3, a3size = PackResult(a3())
+
+	local ply = Entity(1)
+	UPar.NWBatchInit(ply, nil)
+		UPar.NWWriteBatch(ply, nil, UPNW_FLAG_START, 'testAction', a1, a1size)
+		UPar.NWWriteBatch(ply, nil, UPNW_FLAG_END, 'testAction', a2, a2size)
+		UPar.NWWriteBatch(ply, nil, UPNW_FLAG_INTERRUPT, 'testAction', a3, a3size)
+		UPar.NWWriteBatch(ply, nil, UPNW_FLAG_RHYTHM_CHANGE, 'testAction', a3, a3size)
+		
+		PrintTable(ply['upnwbatch_'])
+	UPar.NWSendBatch(ply, nil)
 end
 
-
-local GetPlayerCurrentEffect = UPar.GetPlayerCurrentEffect
-local GetAction = UPar.GetAction
-UPar.Trigger = function(ply, action, checkResult, ...)
-	-- 动作触发器
+UPar.Trigger = function(ply, action, checkResult, channelId, ...)
 	-- checkResult 用于绕过Check, 直接执行
-	
+
 	local actionName = action.Name
+	local actionChannelKey = 'uptri_act_' .. (channelId or '')
+	local checkResultChannelKey = 'uptri_check_' .. (channelId or '')
+	
 
 	-- 检查中断
-	local playing = ply.upar_playing
-	local playingData = ply.upar_playing_data
+	local playing = ply[actionChannelKey]
+	local playingData = ply[checkResultChannelKey]
 	if SERVER and playing and not playing.Interrupts[actionName] then
 		return
 	end
@@ -182,7 +239,7 @@ if SERVER then
 	end
 
 	util.AddNetworkString('UParStart')
-	util.AddNetworkString('UParEvents')
+	
 
 	net.Receive('UParStart', function(len, ply)
 		local actionName = net.ReadString()
@@ -246,75 +303,12 @@ if SERVER then
 
 	concommand.Add('up_forceend', ForceEnd)
 elseif CLIENT then
-	function HandleTriggerData(data, point)
-		point = point or 1
-
-		local flag = data[point]
-		local actionName = data[point + 1]
-		local len = data[point + 2]
-		
-		local result = {unpack(data, point + 3, point + 2 + len)}
-	
-		return flag, actionName, result, point + 3 + len
-	end
-
-	local MoveControl = {}
-	net.Receive('UParEvents', function(len, ply)
-		local data = net.ReadTable(true)
-		ply = LocalPlayer()
-
-		local depth = 0
-		local point = 1
-		while point <= #data and depth < 7 do
-			local flag, actionName, result, nextPoint = HandleTriggerData(data, point)
-			point = nextPoint
-
-			local action = GetAction(actionName)
-			if not action and flag ~= TRIGGERNW_FLAG_MOVE_CONTROL then 
-				return 
-			end
-
-			if flag == TRIGGERNW_FLAG_START then
-				action:Start(ply, unpack(result))
-				local effect = GetPlayerCurrentEffect(ply, action)
-				if effect then 
-					effect:start(ply, unpack(result)) 
-				end
-
-				hook.Run('UParStart', ply, action, result)
-			elseif flag == TRIGGERNW_FLAG_END then
-				action:Clear(ply, nil, nil, unpack(result, 2))
-				local effect = GetPlayerCurrentEffect(ply, action)
-				if effect then 
-					effect:clear(ply, unpack(result, 2)) 
-				end
-
-				hook.Run('UParEnd', ply, action, result)
-			elseif flag == TRIGGERNW_FLAG_MOVE_CONTROL then
-				MoveControl.enable = result[1]
-				MoveControl.ClearMovement = result[2]
-				MoveControl.RemoveKeys = result[3]
-				MoveControl.AddKeys = result[4]
-			elseif flag == TRIGGERNW_FLAG_INTERRUPT then
-				local breakerName = result[1]
-
-				local interruptFunc = action.InterruptsFunc[breakerName]
-				if isfunction(interruptFunc) then
-					interruptFunc(ply, action, unpack(result, 2))
-				elseif istable(interruptFunc) then
-					for i, func in ipairs(interruptFunc) do
-						func(ply, action, unpack(result, 2))
-					end
-				end
-
-				hook.Run('UParInterrupt', ply, action, result, 
-					GetAction(breakerName), nil
-				)
-			end
-			depth = depth + 1
-		end
-	end)
-
+	local MoveControl = {
+		enable = false,
+		ClearMovement = false,
+		RemoveKeys = 0,
+		AddKeys = 0,
+	}
 	
 	hook.Add('CreateMove', 'upar.move.control', function(cmd)
 		if not MoveControl.enable then return end
@@ -333,6 +327,13 @@ elseif CLIENT then
 		end
 	end)
 
+	UPar.MoveControl = MoveControl
+	UPar.SetMoveControl = function(enable, clearMovement, removeKeys, addKeys)
+		MoveControl.enable = enable
+		MoveControl.ClearMovement = clearMovement
+		MoveControl.RemoveKeys = removeKeys
+		MoveControl.AddKeys = addKeys
+	end
 end
 
 UPar.HandleResult = HandleResult

@@ -98,12 +98,22 @@ UPar.SeqHookAdd = function(eventName, identifier, func, priority)
     insertSortedFunc(SeqHookTable[eventName], func, finalPrio)
 end
 
-UPar.SeqHookRun = function(eventName, ...)
+UPar.SeqHookRunAll = function(eventName, ...)
     local funcList = SeqHookTable[eventName]
     if not funcList then return end
     
     for i = 1, #funcList do
         funcList[i](...)
+    end
+end
+
+UPar.SeqHookRun = function(eventName, ...)
+    local funcList = SeqHookTable[eventName]
+    if not funcList then return end
+    
+    for i = 1, #funcList do
+		local result = funcList[i](...)
+        if result ~= nil then return result end
     end
 end
 
